@@ -5,7 +5,7 @@ use axum::{
 };
 use axum::{
     routing::{get, post},
-    Router,
+    Router, ServiceExt,
 };
 use config::Config;
 use http::{Method, Request};
@@ -18,6 +18,8 @@ use std::{
     env, fs,
     time::{Duration, SystemTime},
 };
+use tower::layer::Layer;
+use tower_http::normalize_path::NormalizePathLayer;
 use ws_common::{
     api::{
         Accesskey, AccesskeyRequest, HttpClient, Status, Withdrawal, WithdrawalRequest,
@@ -184,17 +186,12 @@ async fn main() {
 
     info!("Listening on {}", cfg.address);
 
-    // NOTE: double routes for now
-    // (they are considered equal / canonicalized by go stdlib in client but not axum)
-    let app = Router::new()
-        .route("/buy", get(buy_get_handler))
-        .route("//buy", get(buy_get_handler))
-        .route("/withdrawals", post(withdrawals_post_handler))
-        .route("//withdrawals", post(withdrawals_post_handler))
-        .route("/withdrawals", post(withdrawals_post_handler))
-        .route("//withdrawals", post(withdrawals_post_handler))
-        .route("/withdrawals/:id", get(withdrawals_get_handler))
-        .route("//withdrawals/:id", get(withdrawals_get_handler));
+    let app = NormalizePathLayer::trim_trailing_slash().layer(
+        Router::new()
+            .route("/buy", get(buy_get_handler))
+            .route("/withdrawals", post(withdrawals_post_handler))
+            .route("/withdrawals/:id", get(withdrawals_get_handler)),
+    );
 
     axum::Server::bind(&cfg.address.parse().unwrap())
         .serve(app.into_make_service())

@@ -18,3 +18,5 @@ env_logger = "0.10.0"
 http = "0.2.9"
 ws_common = { path = "../ws_common" }
 once_cell = "1.18.0"
+tower-http = { version = "0.4.3", features = ["normalize-path"] }
+tower = "0.4.13"
